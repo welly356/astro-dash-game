@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astro-Dash Runner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap');
+        
+        body {
+            background-color: #0d1117; /* Dark space background */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Orbitron', sans-serif;
+            color: #e6e6fa; /* Light purple for text */
+            margin: 0;
+            padding: 16px;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 600px;
+            box-shadow: 0 0 40px rgba(75, 0, 130, 0.7); /* Deep violet glow */
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        #gameCanvas {
+            background-color: #00000a; /* Ultra dark canvas */
+            border: 4px solid #4b0082; /* Indigo border */
+            border-radius: 8px;
+            touch-action: none; /* Prevent unwanted touch behavior */
+            display: block;
+        }
+
+        .ui-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            background-color: #161b22; /* Slightly lighter dark panel */
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .score-display, .message-box {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .message-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 24px 40px;
+            background-color: rgba(0, 0, 0, 0.85);
+            border: 3px solid #00ffff; /* Cyan highlight */
+            border-radius: 12px;
+            text-align: center;
+            z-index: 100;
+            display: none;
+            color: #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        }
+
+        .start-button {
+            background-image: linear-gradient(45deg, #8a2be2, #4b0082); /* Purple gradient */
+            color: white;
+            padding: 12px 24px;
+            border-radius: 9999px;
+            font-size: 1.125rem;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px #4b0082, 0 8px 15px rgba(138, 43, 226, 0.5);
+            transition: all 0.1s ease;
+        }
+        
+        .start-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px #4b0082, 0 10px 20px rgba(138, 43, 226, 0.7);
+        }
+
+        .start-button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px #4b0082, 0 5px 10px rgba(138, 43, 226, 0.4);
+        }
+
+        .controls-info {
+            margin-top: 1rem;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #b0c4de;
+        }
+
+        /* SVG Asteroid Style */
+        .asteroid {
+            fill: #808080;
+            stroke: #36454F;
+            stroke-width: 2;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <div class="ui-panel">
+        <div class="text-xl font-bold text-indigo-400">ASTRO-DASH</div>
+        <div id="scoreDisplay" class="score-display">Score: 0</div>
+    </div>
+    
+    <div class="relative w-full aspect-square">
+        <canvas id="gameCanvas"></canvas>
+        <div id="messageBox" class="message-box">
+            <div id="messageText" class="text-2xl mb-4">Game Over!</div>
+            <div id="finalScore" class="text-xl mb-6">Score: 0</div>
+            <button id="startButton" class="start-button">
+                START GAME
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="controls-info">
+    Use **Left/Right Arrow Keys** or **Drag** the spaceship (mobile) to move.
+</div>
+
+<script type="module">
+    // --- Canvas and Context Setup ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const messageBox = document.getElementById('messageBox');
+    const messageText = document.getElementById('messageText');
+    const finalScore = document.getElementById('finalScore');
+    const startButton = document.getElementById('startButton');
+
+    // --- Game State Variables ---
+    let gameLoop;
+    let isRunning = false;
+    let score = 0;
+    let lastTime = 0;
+    let spawnTimer = 0;
+    let obstacleSpawnRate = 1200; // ms
+    let gameSpeed = 3;
+
+    // --- Player (Spaceship) Object ---
+    const player = {
+        x: 0, // Will be set to center
+        y: 0, // Will be set near bottom
+        size: 30,
+        speed: 10,
+        dx: 0, // Horizontal velocity
+    };
+
+    // --- Obstacle (Asteroid) Array ---
+    let obstacles = [];
+
+    // --- Asset Functions (Drawing) ---
+
+    // Function to draw the spaceship using a simple SVG shape
+    function drawSpaceship(x, y, size) {
+        ctx.save();
+        ctx.translate(x, y);
+
+        // Main body (blue/cyan)
+        ctx.fillStyle = '#00ffff'; 
+        ctx.beginPath();
+        ctx.moveTo(0, -size); // Nose
+        ctx.lineTo(size * 0.7, size * 0.5); // Right wing tip
+        ctx.lineTo(-size * 0.7, size * 0.5); // Left wing tip
+        ctx.closePath();
+        ctx.shadowColor = '#00ffff';
+        ctx.shadowBlur = 10;
+        ctx.fill();
+
+        // Cockpit (darker center)
+        ctx.fillStyle = '#1e90ff';
+        ctx.beginPath();
+        ctx.arc(0, -size * 0.2, size * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Engine flame (orange/red)
+        ctx.fillStyle = '#ff4500';
+        ctx.shadowColor = '#ff4500';
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.moveTo(-size * 0.3, size * 0.5);
+        ctx.lineTo(size * 0.3, size * 0.5);
+        ctx.lineTo(0, size * 0.5 + Math.random() * 15 + 5);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.restore();
+        // Reset shadow for subsequent draws
+        ctx.shadowBlur = 0;
+    }
+    
+    // Function to draw an asteroid (simple, rough circle)
+    function drawAsteroid(x, y, radius) {
+        ctx.save();
+        ctx.translate(x, y);
+
+        // Asteroid color and texture
+        ctx.fillStyle = '#808080'; // Gray
+        ctx.strokeStyle = '#36454F'; // Dark slate
+        ctx.lineWidth = 2;
+        
+        // Draw a rough circle shape to look like a rock
+        ctx.beginPath();
+        // Start near the top
+        ctx.moveTo(radius * Math.cos(0), radius * Math.sin(0)); 
+        for (let i = 0; i <= 10; i++) {
+            const angle = i * (Math.PI * 2 / 10);
+            // Add some randomness to the radius
+            const r = radius + Math.random() * 5 - 2.5; 
+            ctx.lineTo(r * Math.cos(angle), r * Math.sin(angle));
+        }
+        ctx.closePath();
+        
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.2)';
+        ctx.shadowBlur = 5;
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.restore();
+        // Reset shadow for subsequent draws
+        ctx.shadowBlur = 0;
+    }
+
+    // --- Game Logic Functions ---
+
+    function resetGame() {
+        // Set canvas size dynamically
+        const container = canvas.parentElement;
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+
+        player.x = canvas.width / 2;
+        player.y = canvas.height - player.size * 2;
+        player.dx = 0;
+        score = 0;
+        gameSpeed = 3;
+        obstacleSpawnRate = 1200;
+        obstacles = [];
+        scoreDisplay.textContent = 'Score: 0';
+        messageBox.style.display = 'none';
+        isRunning = true;
+        lastTime = performance.now();
+        window.requestAnimationFrame(gameLoopUpdate);
+    }
+
+    function spawnAsteroid() {
+        const radius = Math.random() * 15 + 10; // Radius between 10 and 25
+        const x = Math.random() * (canvas.width - radius * 2) + radius;
+        
+        obstacles.push({
+            x: x,
+            y: -radius, // Start above the screen
+            radius: radius,
+            dy: gameSpeed,
+            hitbox: radius * 0.8 // A slightly smaller hitbox for fairness
+        });
+    }
+
+    function update(deltaTime) {
+        if (!isRunning) return;
+
+        // 1. Update Player Position
+        player.x += player.dx;
+
+        // Wall collision detection
+        if (player.x < player.size) {
+            player.x = player.size;
+            player.dx = 0;
+        }
+        if (player.x > canvas.width - player.size) {
+            player.x = canvas.width - player.size;
+            player.dx = 0;
+        }
+
+        // 2. Obstacle Management
+        spawnTimer += deltaTime;
+        if (spawnTimer >= obstacleSpawnRate) {
+            spawnAsteroid();
+            spawnTimer = 0;
+            // Gradually increase difficulty
+            if (obstacleSpawnRate > 300) {
+                obstacleSpawnRate -= 20;
+            }
+            if (gameSpeed < 7) {
+                gameSpeed += 0.05;
+            }
+        }
+        
+        // Update obstacle positions and check for collisions
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            const obs = obstacles[i];
+            obs.y += gameSpeed * (deltaTime / 16); // Normalize movement based on time
+            obs.dy = gameSpeed; // Keep vertical speed consistent
+
+            // Collision check (Distance formula between centers)
+            const dist = Math.hypot(player.x - obs.x, player.y - obs.y);
+            if (dist < player.size * 0.6 + obs.hitbox) {
+                // Collision occurred
+                gameOver();
+                return;
+            }
+
+            // Remove obstacle if it goes off screen (and increase score)
+            if (obs.y > canvas.height + obs.radius) {
+                obstacles.splice(i, 1);
+                score++;
+                scoreDisplay.textContent = `Score: ${score}`;
+            }
+        }
+    }
+
+    function draw() {
+        // Clear canvas (Space is black)
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw background stars (simple white dots)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        for(let i = 0; i < 50; i++) {
+            const starX = Math.random() * canvas.width;
+            const starY = Math.random() * canvas.height;
+            ctx.beginPath();
+            ctx.arc(starX, starY, Math.random() * 1.5 + 0.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Draw obstacles
+        obstacles.forEach(obs => {
+            drawAsteroid(obs.x, obs.y, obs.radius);
+        });
+
+        // Draw player
+        drawSpaceship(player.x, player.y, player.size);
+    }
+
+    // --- Main Game Loop ---
+    function gameLoopUpdate(currentTime) {
+        const deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
+        
+        if (isRunning) {
+            update(deltaTime);
+            draw();
+            gameLoop = window.requestAnimationFrame(gameLoopUpdate);
+        }
+    }
+
+    function gameOver() {
+        isRunning = false;
+        window.cancelAnimationFrame(gameLoop);
+        messageText.textContent = 'GAME OVER';
+        finalScore.textContent = `You survived ${score} seconds!`;
+        messageBox.style.display = 'block';
+    }
+
+    // --- Input Handling (Keyboard) ---
+    function handleKeyDown(e) {
+        if (!isRunning) return;
+        
+        if (e.key === 'ArrowRight' || e.key === 'd') {
+            player.dx = player.speed;
+            e.preventDefault();
+        } else if (e.key === 'ArrowLeft' || e.key === 'a') {
+            player.dx = -player.speed;
+            e.preventDefault();
+        }
+    }
+
+    function handleKeyUp(e) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'd') {
+            player.dx = 0;
+            e.preventDefault();
+        }
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+
+    // --- Input Handling (Touch/Mouse for Mobile Responsiveness) ---
+    let touchX = null;
+
+    function handlePointerDown(e) {
+        if (!isRunning) return;
+        touchX = e.clientX || e.touches?.[0]?.clientX;
+    }
+
+    function handlePointerMove(e) {
+        if (!isRunning || touchX === null) return;
+        
+        const currentX = e.clientX || e.touches?.[0]?.clientX;
+        if (currentX !== undefined) {
+            const deltaX = currentX - touchX;
+
+            // Simple drag control: move player toward the touch point
+            if (deltaX > 5) { // moving right
+                player.dx = player.speed;
+            } else if (deltaX < -5) { // moving left
+                player.dx = -player.speed;
+            } else {
+                player.dx = 0;
+            }
+            touchX = currentX; // Update touchX for next move
+        }
+        e.preventDefault();
+    }
+
+    function handlePointerUp() {
+        touchX = null;
+        player.dx = 0;
+    }
+
+    // Add event listeners for both mouse and touch for cross-device support
+    canvas.addEventListener('mousedown', handlePointerDown);
+    canvas.addEventListener('mousemove', handlePointerMove);
+    canvas.addEventListener('mouseup', handlePointerUp);
+    canvas.addEventListener('mouseleave', handlePointerUp); // Stop movement if mouse leaves canvas
+
+    // Touch events for mobile
+    canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
+    canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
+    canvas.addEventListener('touchend', handlePointerUp);
+    canvas.addEventListener('touchcancel', handlePointerUp);
+
+
+    // --- Initialization ---
+
+    // Handle button click to start/restart
+    startButton.addEventListener('click', resetGame);
+
+    // Initial setup when the window loads
+    window.onload = function() {
+        // Hide game over screen initially, display start button
+        messageText.textContent = 'ASTRO-DASH';
+        finalScore.textContent = 'Dodge the asteroids!';
+        messageBox.style.display = 'block';
+
+        // Set initial canvas size
+        const container = canvas.parentElement;
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+        
+        player.x = canvas.width / 2;
+        player.y = canvas.height - player.size * 2;
+    };
+
+    // Make sure the canvas resizes if the window is resized
+    window.addEventListener('resize', () => {
+        const container = canvas.parentElement;
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+        
+        // Reposition player correctly after resize
+        player.y = canvas.height - player.size * 2;
+        
+        // If the game is running, redraw everything
+        if (isRunning) {
+            draw();
+        }
+    });
+
+</script>
+</body>
+</html>
