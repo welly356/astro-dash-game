@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astro-Dash Community Support</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap');
+        
+        body {
+            background-color: #0d1117; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Orbitron', sans-serif;
+            color: #e6e6fa; 
+            margin: 0;
+            padding: 16px;
+        }
+
+        .support-box {
+            background-color: #161b22;
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 0 50px rgba(75, 0, 130, 0.9);
+            text-align: center;
+            max-width: 450px;
+            width: 90%;
+            border: 3px solid #00ffff;
+        }
+
+        .discord-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 24px;
+            font-size: 1.125rem;
+            font-weight: bold;
+            color: white;
+            background-color: #5865F2; /* Discord blue */
+            border-radius: 8px;
+            text-decoration: none;
+            box-shadow: 0 4px #4249a4, 0 8px 15px rgba(88, 101, 242, 0.5);
+            transition: all 0.1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .discord-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px #4249a4, 0 10px 20px rgba(88, 101, 242, 0.7);
+        }
+
+        .discord-link:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px #4249a4, 0 5px 10px rgba(88, 101, 242, 0.4);
+        }
+
+        .back-link {
+            display: block;
+            margin-top: 30px;
+            color: #00ffff;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="support-box">
+    <h1 class="text-3xl font-bold text-cyan-400 mb-6">Support Our Community</h1>
+
+    <p class="text-xl mb-6 text-indigo-300">
+        Join the official **Astro-Dash Discord** server to share feedback, report bugs, and connect with other players!
+    </p>
+
+    <a href="https://discord.gg/mYdWExTQE" target="_blank" class="discord-link">
+        <svg fill="currentColor" viewBox="0 0 24 24" width="24" height="24" class="mr-2">
+            <path d="M20 2.5a.5.5 0 0 0-.5-.5H4.5a.5.5 0 0 0-.5.5v19a.5.5 0 0 0 .5.5H19.5a.5.5 0 0 0 .5-.5V2.5zm-8.083 14.5c-1.396 0-2.5-1.119-2.5-2.5s1.104-2.5 2.5-2.5 2.5 1.119 2.5 2.5-1.104 2.5-2.5 2.5zm-5.417-6c0-1.654 1.346-3 3-3s3 1.346 3 3-1.346 3-3 3-3-1.346-3-3zm10 0c0-1.654 1.346-3 3-3s3 1.346 3 3-1.346 3-3 3-3-1.346-3-3z"/>
+        </svg>
+        Join Discord: https://discord.gg/mYdWExTQE
+    </a>
+
+    <a href="index.html" class="back-link">&larr; Return to Game</a>
+</div>
+
+</body>
+</html>
